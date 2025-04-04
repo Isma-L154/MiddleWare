@@ -8,59 +8,48 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-
     - name: Restore dependencies
       run: dotnet restore
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
-
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --no-restore
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
-
-    - name: Pack NuGet package
-      run: dotnet pack --no-build --configuration Release --output ./nupkgs
+    - name: Pack      
+      run: dotnet pack
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
-
     - name: List generated packages
-      run: ls -R ./MiddleWare/Autorizacion.Abstracciones/nupkgs
-
-    - name: Upload NuGet package artifact
-      uses: actions/upload-artifact@v3
+      run: ls -R ./MiddleWare/Autorizacion.Abstracciones/bin/Release/
+      
+    - uses: actions/upload-artifact@v3
       with:
         name: Autorizacion.Abstracciones
-        path: ./MiddleWare/Autorizacion.Abstracciones/nupkgs/*.nupkg
         if-no-files-found: error
         retention-days: 7
+        path: ./MiddleWare/Autorizacion.Abstracciones/bin/Release/*.nupkg
 
-  publish:
-    runs-on: ubuntu-latest
+  release:
+    runs-on: ubuntu-latest    
     needs: build
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
-    - name: Download Artifacts
+    steps:  
+    - name: Checkout 
+      uses: actions/checkout@v3
+    
+    - name: Downlod Artifacts 
       uses: actions/download-artifact@v3
-      with:
-        name: Autorizacion.Abstracciones
-        path: ./nupkgs
-
-    - name: List downloaded artifacts
-      run: ls -R ./nupkgs
-
-    - name: Add GitHub NuGet source
-      run: dotnet nuget add source --username Isma-L154 --password ${{ secrets.NUGET_TOKEN }} --store-password-in-clear-text --name GitHubPackages "https://nuget.pkg.github.com/Isma-L154/index.json"
-
-    - name: Publish NuGet package
-      run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }} --source "GitHubPackages" --skip-duplicate
+    
+    - name: List Files
+      run: ls -R
+      
+    - name: Prep packages
+      run: dotnet nuget add source --username Isma-L154 --password ${{ secrets.NUGET_TOKEN }} --store-password-in-clear-text --name Package "https://nuget.pkg.github.com/Isma-L154/index.json"
+    - name: Push package to GitHub packages 
+      run: dotnet nuget push Autorizacion.Abstracciones/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }}  --source "Package" --skip-duplicate
