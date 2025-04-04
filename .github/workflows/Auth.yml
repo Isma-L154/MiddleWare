@@ -32,7 +32,7 @@ jobs:
         name: Autorizacion.Middleware
         if-no-files-found: error
         retention-days: 7
-        path: /home/runner/work/Middleware/**/bin/Release/*.nupkg
+        path: /home/runner/work/Middleware/Middleware/MiddleWare/*/*/*/*.nupkg
 
   release:
     runs-on: ubuntu-latest    
