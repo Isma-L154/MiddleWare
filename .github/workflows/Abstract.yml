@@ -29,7 +29,7 @@ jobs:
     - name: List generated packages
       run: ls -R ./MiddleWare/Autorizacion.Abstracciones/bin/Release/
       
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: Autorizacion.Abstracciones
         if-no-files-found: error
@@ -41,10 +41,10 @@ jobs:
     needs: build
     steps:  
     - name: Checkout 
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Downlod Artifacts 
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     
     - name: List Files
       run: ls -R
