@@ -21,14 +21,11 @@ jobs:
       run: dotnet restore
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
     - name: Pack      
-      run: dotnet pack
-      working-directory: ./MiddleWare/Autorizacion.Abstracciones
-    - name: List generated packages
-      run: ls -R ./MiddleWare/Autorizacion.Abstracciones/bin/Release/
-      
+      run: dotnet pack --configuration Release
+      working-directory: ./MiddleWare/Autorizacion.Abstracciones     
     - uses: actions/upload-artifact@v4
       with:
         name: Autorizacion.Abstracciones
