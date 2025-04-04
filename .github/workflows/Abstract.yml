@@ -21,10 +21,10 @@ jobs:
       run: dotnet restore
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
     - name: Pack      
-      run: dotnet pack
+      run: dotnet pack --configuration Release
       working-directory: ./MiddleWare/Autorizacion.Abstracciones
       
     - uses: actions/upload-artifact@v3
@@ -32,7 +32,7 @@ jobs:
         name: Autorizacion.Abstracciones
         if-no-files-found: error
         retention-days: 7
-        path: /home/runner/work/Middleware/Middleware/MiddleWare/Autorizacion.Abstracciones/bin/Release/*.nupkg
+        path: ./MiddleWare/Autorizacion.Abstracciones/bin/Release/*.nupkg
 
   release:
     runs-on: ubuntu-latest    
