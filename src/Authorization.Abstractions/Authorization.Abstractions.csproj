@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Authorization.Abstractions</PackageId>
+    <Description>Contracts (entities, models, options and interfaces) for the JWT authorization middleware. Has no external dependencies.</Description>
+  </PropertyGroup>
+
+</Project>

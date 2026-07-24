@@ -1,0 +1,41 @@
+<Project>
+
+  <!--
+    Shared build + NuGet packaging metadata for every library in src/.
+    Centralizing this keeps versioning and package info consistent across
+    all projects instead of being copy-pasted (and drifting) per csproj.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Suppress "missing XML comment" noise; we document public surface intentionally. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Common NuGet metadata (v2.0.0 = breaking English API rename). -->
+  <PropertyGroup>
+    <Version>2.0.0</Version>
+    <Authors>Isma-L154</Authors>
+    <Company>Isma-L154</Company>
+    <Product>JWT Authorization Middleware</Product>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Isma-L154/MiddleWare</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Isma-L154/MiddleWare</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>middleware;jwt;authentication;authorization;aspnetcore;claims</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- Packing is driven explicitly by the CI release job, not on every local build. -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" Condition="Exists('$(MSBuildThisFileDirectory)../README.md')" />
+  </ItemGroup>
+
+</Project>

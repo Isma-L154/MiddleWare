@@ -398,3 +398,10 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Claude / AI assistant local files (never commit)
+CLAUDE.md
+.claude/
+.claude*/
+CLAUDE.local.md
+**/CLAUDE.md
