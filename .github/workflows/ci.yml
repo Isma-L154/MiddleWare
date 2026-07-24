@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches-ignore: []          # build every branch push
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Authorization.sln
+
+      - name: Build
+        run: dotnet build Authorization.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Authorization.sln --no-build --configuration Release --verbosity normal

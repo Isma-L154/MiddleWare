@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Authorization.Business</PackageId>
+    <Description>Business layer for the JWT authorization middleware; orchestrates identity resolution over the data-access layer.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Authorization.Abstractions\Authorization.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

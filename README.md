@@ -1,52 +1,139 @@
-# 🔐 JWT Authentication & Authorization Middleware
+# 🔐 JWT Authorization Claims Middleware
 
-This side project is a simple yet effective **middleware** component designed to handle **user authentication and authorization using JSON Web Tokens (JWT)**. It is designed to be easily integrated into other projects by deploying it as a **NuGet package**.
+[![CI](https://github.com/Isma-L154/MiddleWare/actions/workflows/ci.yml/badge.svg)](https://github.com/Isma-L154/MiddleWare/actions/workflows/ci.yml)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Middleware plays a vital role in web applications by acting as a filter between the HTTP request and the core application logic. This middleware ensures that only authenticated and authorized users can access protected routes or resources.
+An ASP.NET Core middleware that **enriches an already-authenticated request principal** with identity claims (the user's id, name and email) and one **role claim per profile**, resolved from a SQL Server security store. It's shipped as a small set of **NuGet packages** so it can be dropped into any .NET 8 web app.
 
----
-
-## 🧩 What is Middleware?
-
-A **middleware** is a function or component that processes HTTP requests and/or responses within the application pipeline. It's typically used to:
-
-- Authenticate and authorize users
-- Log incoming and outgoing traffic
-- Handle errors or exceptions
-- Modify requests or responses
-- Manage headers, sessions, or CORS
+> This is a personal side project. It sits between the HTTP request and your application logic, turning a bare authenticated token into a fully-populated `ClaimsPrincipal` your authorization policies can rely on.
 
 ---
 
-## ✅ Purpose of This Middleware
+## ✨ What it does
 
-The main purpose of this middleware is to provide **basic but secure access control** through JWT-based authentication. Specifically, it:
+Once a request has been authenticated (by JWT bearer auth, for example), the middleware:
 
-- 🔐 **Authenticates**: Verifies the validity of a JWT sent in the request (usually in the Authorization header).
-- 🔓 **Authorizes**: Checks whether the user has the required role or permissions to access a specific route or resource.
+1. Reads the configured user-name claim from the incoming principal.
+2. Looks up the matching user in the security database (via a stored procedure).
+3. Adds `Email`, `Name` and `IdUsuario` claims.
+4. Looks up the user's profiles and adds a `Role` claim for each one.
 
----
-
-## 🔧 How It Works
-
-1. The client sends a request with a JWT in the `Authorization` header (e.g., `Bearer <token>`).
-2. The middleware:
-   - Verifies the token's validity and signature.
-   - Decodes the token to extract user data (e.g., ID, roles).
-   - Checks if the user has permission to access the endpoint.
-3. If the token is invalid or permissions are insufficient, the request is rejected with the appropriate HTTP status (`401 Unauthorized` or `403 Forbidden`).
+If anything goes wrong resolving that data (missing claim, unknown user, database outage), the request **degrades gracefully**: it continues unenriched instead of crashing the pipeline.
 
 ---
 
-## 🛠️ Technologies Used
+## 🧱 Architecture
 
-- **JSON Web Tokens (JWT)** for token generation and validation
-- Written in **[C# , .NET 8.0]**
-- Lightweight, reusable, and easily integrated into any route-based app
-- Deployed as a **NuGet package** for easy integration into other projects
+The solution is layered so each concern is isolated and independently testable:
+
+| Project | Responsibility |
+| --- | --- |
+| `Authorization.Abstractions` | Contracts: entities, models, options and interfaces. No external dependencies. |
+| `Authorization.Common` | Cached, reflection-based object mapper used to map entities → models. |
+| `Authorization.DataAccess` | Dapper + `Microsoft.Data.SqlClient` access to stored procedures. |
+| `Authorization.Business` | Thin business layer orchestrating identity resolution. |
+| `Authorization.Middleware` | The ASP.NET Core middleware plus DI and pipeline extensions. |
+
+```
+Request ─▶ Authentication ─▶ ClaimsEnrichmentMiddleware ─▶ your app
+                                     │
+                     IAuthorizationManager (Business)
+                                     │
+                       ISecurityRepository (DataAccess)
+                                     │
+                     IDbConnectionFactory ─▶ SQL Server
+```
 
 ---
 
-## 📦 Deployment via NuGet
+## 📦 Installation
 
-This middleware is packaged and deployed as a **NuGet package**, making it easy to integrate into any **C# .NET Core** project. To install the middleware package in your project:
+The packages are published to **GitHub Packages**. Add the feed and install the entry-point package (it pulls the rest in transitively):
+
+```bash
+dotnet nuget add source "https://nuget.pkg.github.com/Isma-L154/index.json" \
+  --name github --username <your-user> --password <your-PAT>
+
+dotnet add package Authorization.Middleware
+```
+
+---
+
+## 🚀 Usage
+
+**1. Register the services** (wires the connection factory, repository and business manager):
+
+```csharp
+using Authorization.Middleware;
+
+builder.Services.AddAuthorizationClaims();
+```
+
+**2. Add the middleware to the pipeline**, after authentication:
+
+```csharp
+app.UseAuthentication();
+app.UseAuthorizationClaims(); // enrich the principal
+app.UseAuthorization();
+```
+
+**3. Configure the connection string** in `appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "SecurityDb": "Server=...;Database=...;Trusted_Connection=True;Encrypt=True;"
+  }
+}
+```
+
+---
+
+## ⚙️ Configuration
+
+Everything that used to be hard-coded is now configurable through `ClaimsEnrichmentOptions`:
+
+```csharp
+builder.Services.AddAuthorizationClaims(options =>
+{
+    options.ConnectionStringName = "SecurityDb";      // ConnectionStrings key
+    options.UserNameClaimType    = "usuario";         // inbound JWT claim to read
+    options.GetUserProcedure     = "ObtenerUsuario";  // stored procedure names
+    options.GetProfilesProcedure = "ObtenerPerfilesxUsuario";
+});
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ConnectionStringName` | `SecurityDb` | Key under `ConnectionStrings` for the security DB. |
+| `UserNameClaimType` | `usuario` | Inbound claim type carrying the user name. |
+| `GetUserProcedure` | `ObtenerUsuario` | Stored procedure returning a user by name/email. |
+| `GetProfilesProcedure` | `ObtenerPerfilesxUsuario` | Stored procedure returning a user's profiles. |
+
+---
+
+## 🧪 Building & testing
+
+```bash
+dotnet build Authorization.sln -c Release
+dotnet test  Authorization.sln -c Release
+```
+
+CI runs on every push and pull request; packages are published from the `main` branch.
+
+---
+
+## 🛠️ Technologies
+
+- **.NET 8.0**, C# latest
+- **Dapper** for micro-ORM data access
+- **Microsoft.Data.SqlClient** (the maintained SQL Server driver)
+- **xUnit** + **Moq** for unit tests
+- Distributed as **NuGet packages** via GitHub Packages
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).

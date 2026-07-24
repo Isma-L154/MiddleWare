@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+# Use the built-in GITHUB_TOKEN to publish to GitHub Packages —
+# no personal access token to manage or rotate.
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore Authorization.sln
+
+      - name: Build
+        run: dotnet build Authorization.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Authorization.sln --no-build --configuration Release
+
+      - name: Pack
+        run: dotnet pack Authorization.sln --no-build --configuration Release --output "${{ github.workspace }}/artifacts"
+
+      - name: Upload packages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          if-no-files-found: error
+          retention-days: 7
+          path: ${{ github.workspace }}/artifacts/*.nupkg
+
+      - name: Push to GitHub Packages
+        run: >
+          dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg"
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          --skip-duplicate
