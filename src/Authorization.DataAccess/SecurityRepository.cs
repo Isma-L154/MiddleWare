@@ -1,10 +1,9 @@
 using System.Data;
 using Authorization.Abstractions.DataAccess;
 using Authorization.Abstractions.Options;
-using Authorization.Common;
 using Dapper;
 using Microsoft.Extensions.Options;
-using Entities = Authorization.Abstractions.Entities;
+using Entities = Authorization.DataAccess.Entities;
 using Models = Authorization.Abstractions.Models;
 
 namespace Authorization.DataAccess;
@@ -29,19 +28,11 @@ public sealed class SecurityRepository : ISecurityRepository
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        // A fresh connection per call: SqlConnection is not thread-safe and
-        // must not be shared across concurrent requests. `await using` guarantees
-        // it is returned to the pool even if the query throws.
         await using var connection = _connectionFactory.CreateConnection();
+        var entity = await connection.QueryFirstOrDefaultAsync<Entities.User>(
+            CreateCommand(_options.GetUserProcedure, user, cancellationToken));
 
-        var command = new CommandDefinition(
-            _options.GetUserProcedure,
-            new { user.Email, user.UserName },
-            commandType: CommandType.StoredProcedure,
-            cancellationToken: cancellationToken);
-
-        var entity = await connection.QueryFirstOrDefaultAsync<Entities.User>(command);
-        return Converter.Convert<Entities.User, Models.User>(entity);
+        return entity is null ? null : ToModel(entity);
     }
 
     /// <inheritdoc />
@@ -50,14 +41,21 @@ public sealed class SecurityRepository : ISecurityRepository
         ArgumentNullException.ThrowIfNull(user);
 
         await using var connection = _connectionFactory.CreateConnection();
+        var entities = await connection.QueryAsync<Entities.Profile>(
+            CreateCommand(_options.GetProfilesProcedure, user, cancellationToken));
 
-        var command = new CommandDefinition(
-            _options.GetProfilesProcedure,
+        return entities.Select(ToModel).ToList();
+    }
+
+    private static CommandDefinition CreateCommand(string procedure, Models.User user, CancellationToken cancellationToken) =>
+        new(procedure,
             new { user.Email, user.UserName },
             commandType: CommandType.StoredProcedure,
             cancellationToken: cancellationToken);
 
-        var entities = await connection.QueryAsync<Entities.Profile>(command);
-        return Converter.ConvertList<Entities.Profile, Models.Profile>(entities);
-    }
+    private static Models.User ToModel(Entities.User entity) =>
+        new() { Id = entity.Id, UserName = entity.UserName, Email = entity.Email };
+
+    private static Models.Profile ToModel(Entities.Profile entity) =>
+        new() { Id = entity.Id, Name = entity.Name };
 }

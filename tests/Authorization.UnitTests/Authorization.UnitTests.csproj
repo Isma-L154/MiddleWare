@@ -25,7 +25,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Authorization.Abstractions\Authorization.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Authorization.Business\Authorization.Business.csproj" />
-    <ProjectReference Include="..\..\src\Authorization.Common\Authorization.Common.csproj" />
     <ProjectReference Include="..\..\src\Authorization.DataAccess\Authorization.DataAccess.csproj" />
     <ProjectReference Include="..\..\src\Authorization.Middleware\Authorization.Middleware.csproj" />
   </ItemGroup>

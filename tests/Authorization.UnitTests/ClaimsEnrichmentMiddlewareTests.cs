@@ -22,7 +22,7 @@ public class ClaimsEnrichmentMiddlewareTests
         var context = new DefaultHttpContext();
         var nextCalled = false;
 
-        var middleware = new ClaimsEnrichmentMiddleware(_ => { nextCalled = true; return Task.CompletedTask; }, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
+        var middleware = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
 
         await middleware.InvokeAsync(context, manager.Object);
 
@@ -45,14 +45,14 @@ public class ClaimsEnrichmentMiddlewareTests
 
         var context = BuildAuthenticatedContext("jdoe");
         var nextCalled = false;
-        var middleware = new ClaimsEnrichmentMiddleware(_ => { nextCalled = true; return Task.CompletedTask; }, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
+        var middleware = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
 
         await middleware.InvokeAsync(context, manager.Object);
 
         Assert.True(nextCalled);
         Assert.Equal("jdoe@example.com", context.User.FindFirst(ClaimTypes.Email)?.Value);
         Assert.Equal("jdoe", context.User.FindFirst(ClaimTypes.Name)?.Value);
-        Assert.Equal(userId.ToString(), context.User.FindFirst("IdUsuario")?.Value);
+        Assert.Equal(userId.ToString(), context.User.FindFirst(ClaimsEnrichmentMiddleware.UserIdClaimType)?.Value);
         var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
         Assert.Equal(new[] { "10", "20" }, roles);
     }
@@ -62,7 +62,7 @@ public class ClaimsEnrichmentMiddlewareTests
     {
         var manager = new Mock<IAuthorizationManager>(MockBehavior.Strict);
         var context = BuildAuthenticatedContext(userName: null);
-        var middleware = new ClaimsEnrichmentMiddleware(_ => Task.CompletedTask, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
+        var middleware = CreateMiddleware(_ => Task.CompletedTask);
 
         await middleware.InvokeAsync(context, manager.Object);
 
@@ -78,11 +78,11 @@ public class ClaimsEnrichmentMiddlewareTests
             .ReturnsAsync((User?)null);
 
         var context = BuildAuthenticatedContext("ghost");
-        var middleware = new ClaimsEnrichmentMiddleware(_ => Task.CompletedTask, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
+        var middleware = CreateMiddleware(_ => Task.CompletedTask);
 
         await middleware.InvokeAsync(context, manager.Object);
 
-        Assert.Null(context.User.FindFirst("IdUsuario"));
+        Assert.Null(context.User.FindFirst(ClaimsEnrichmentMiddleware.UserIdClaimType));
         manager.Verify(m => m.GetProfilesForUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -98,14 +98,38 @@ public class ClaimsEnrichmentMiddlewareTests
 
         var context = BuildAuthenticatedContext("jdoe");
         var nextCalled = false;
-        var middleware = new ClaimsEnrichmentMiddleware(_ => { nextCalled = true; return Task.CompletedTask; }, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
+        var middleware = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
 
         var exception = await Record.ExceptionAsync(() => middleware.InvokeAsync(context, manager.Object));
 
         Assert.Null(exception);
         Assert.True(nextCalled);
-        Assert.Null(context.User.FindFirst("IdUsuario"));
+        Assert.Null(context.User.FindFirst(ClaimsEnrichmentMiddleware.UserIdClaimType));
     }
+
+    [Fact]
+    public async Task Invoke_RequestAborted_SkipsEnrichmentAndCallsNext()
+    {
+        using var aborted = new CancellationTokenSource();
+        aborted.Cancel();
+        var manager = new Mock<IAuthorizationManager>();
+        manager
+            .Setup(m => m.GetUserAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException(aborted.Token));
+
+        var context = BuildAuthenticatedContext("jdoe");
+        context.RequestAborted = aborted.Token;
+        var nextCalled = false;
+        var middleware = CreateMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+
+        await middleware.InvokeAsync(context, manager.Object);
+
+        Assert.True(nextCalled);
+        Assert.Null(context.User.FindFirst(ClaimsEnrichmentMiddleware.UserIdClaimType));
+    }
+
+    private static ClaimsEnrichmentMiddleware CreateMiddleware(RequestDelegate next) =>
+        new(next, NullLogger<ClaimsEnrichmentMiddleware>.Instance, Options);
 
     private static DefaultHttpContext BuildAuthenticatedContext(string? userName)
     {

@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Authorization.Abstractions\Authorization.Abstractions.csproj" />
-    <ProjectReference Include="..\Authorization.Common\Authorization.Common.csproj" />
   </ItemGroup>
 
 </Project>

@@ -21,6 +21,9 @@ namespace Authorization.Middleware;
 /// </remarks>
 public sealed partial class ClaimsEnrichmentMiddleware
 {
+    /// <summary>Claim type carrying the resolved user's identifier.</summary>
+    public const string UserIdClaimType = "IdUsuario";
+
     private readonly RequestDelegate _next;
     private readonly ILogger<ClaimsEnrichmentMiddleware> _logger;
     private readonly ClaimsEnrichmentOptions _options;
@@ -102,10 +105,10 @@ public sealed partial class ClaimsEnrichmentMiddleware
             claims.Add(new Claim(ClaimTypes.Name, user.UserName));
         }
 
-        claims.Add(new Claim("IdUsuario", user.Id.ToString()));
+        claims.Add(new Claim(UserIdClaimType, user.Id.ToString()));
     }
 
-    private async Task AddProfileClaimsAsync(
+    private static async Task AddProfileClaimsAsync(
         ICollection<Claim> claims,
         User user,
         IAuthorizationManager authorizationManager,

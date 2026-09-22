@@ -3,14 +3,13 @@ using Authorization.Abstractions.DataAccess;
 using Authorization.Abstractions.Options;
 using Authorization.Business;
 using Authorization.DataAccess;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Authorization.Middleware;
 
 /// <summary>
-/// Dependency-injection registration for the authorization stack. A single
-/// call wires the connection factory, repository and business manager so
-/// consumers no longer have to assemble the graph by hand.
+/// Dependency-injection registration for the authorization stack.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -25,11 +24,17 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var optionsBuilder = services.AddOptions<ClaimsEnrichmentOptions>();
-        if (configure is not null)
-        {
-            optionsBuilder.Configure(configure);
-        }
+        // Validated at host start: the connection factory is resolved while
+        // binding the middleware's scoped dependencies, outside its graceful
+        // degradation, so a misconfiguration would otherwise fail every request.
+        services.AddOptions<ClaimsEnrichmentOptions>()
+            .Configure(options => configure?.Invoke(options))
+            .Validate(HasRequiredSettings,
+                "ClaimsEnrichmentOptions requires a connection string name, user name claim type and stored procedure names.")
+            .Validate<IConfiguration>(
+                (options, configuration) => !string.IsNullOrWhiteSpace(configuration.GetConnectionString(options.ConnectionStringName)),
+                "The security database connection string was not found under \"ConnectionStrings\". Check ClaimsEnrichmentOptions.ConnectionStringName (default: SecurityDb).")
+            .ValidateOnStart();
 
         // The factory only caches an immutable connection string, so it is safe
         // as a singleton; it still hands out a fresh connection per call.
@@ -39,4 +44,10 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    private static bool HasRequiredSettings(ClaimsEnrichmentOptions options) =>
+        !string.IsNullOrWhiteSpace(options.ConnectionStringName) &&
+        !string.IsNullOrWhiteSpace(options.UserNameClaimType) &&
+        !string.IsNullOrWhiteSpace(options.GetUserProcedure) &&
+        !string.IsNullOrWhiteSpace(options.GetProfilesProcedure);
 }

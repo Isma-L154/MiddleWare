@@ -16,7 +16,7 @@ Once a request has been authenticated (by JWT bearer auth, for example), the mid
 
 1. Reads the configured user-name claim from the incoming principal.
 2. Looks up the matching user in the security database (via a stored procedure).
-3. Adds `Email`, `Name` and `IdUsuario` claims.
+3. Adds `Email`, `Name` and `IdUsuario` (`ClaimsEnrichmentMiddleware.UserIdClaimType`) claims.
 4. Looks up the user's profiles and adds a `Role` claim for each one.
 
 If anything goes wrong resolving that data (missing claim, unknown user, database outage), the request **degrades gracefully**: it continues unenriched instead of crashing the pipeline.
@@ -29,9 +29,8 @@ The solution is layered so each concern is isolated and independently testable:
 
 | Project | Responsibility |
 | --- | --- |
-| `Authorization.Abstractions` | Contracts: entities, models, options and interfaces. No external dependencies. |
-| `Authorization.Common` | Cached, reflection-based object mapper used to map entities → models. |
-| `Authorization.DataAccess` | Dapper + `Microsoft.Data.SqlClient` access to stored procedures. |
+| `Authorization.Abstractions` | Contracts: models, options and interfaces. No external dependencies. |
+| `Authorization.DataAccess` | Dapper + `Microsoft.Data.SqlClient` access to stored procedures; maps database rows to models. |
 | `Authorization.Business` | Thin business layer orchestrating identity resolution. |
 | `Authorization.Middleware` | The ASP.NET Core middleware plus DI and pipeline extensions. |
 
@@ -92,7 +91,7 @@ app.UseAuthorization();
 
 ## ⚙️ Configuration
 
-Everything that used to be hard-coded is now configurable through `ClaimsEnrichmentOptions`:
+Claim and database settings are configurable through `ClaimsEnrichmentOptions`. They are validated at startup, so a missing connection string or blank setting fails the host instead of individual requests.
 
 ```csharp
 builder.Services.AddAuthorizationClaims(options =>
