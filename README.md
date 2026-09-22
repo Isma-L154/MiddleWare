@@ -119,7 +119,15 @@ dotnet build Authorization.sln -c Release
 dotnet test  Authorization.sln -c Release
 ```
 
-CI runs on every push and pull request; packages are published from the `main` branch.
+CI runs on every push and pull request.
+
+To release, bump `<Version>` in `src/Directory.Build.props` through a PR, then tag the merged commit on `main`:
+
+```bash
+git tag v3.0.0 && git push origin v3.0.0
+```
+
+The release workflow fails if the tag does not match the project version or the version already exists on the feed.
 
 ---
 
