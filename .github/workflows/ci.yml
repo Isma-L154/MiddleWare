@@ -2,10 +2,12 @@ name: CI
 
 on:
   push:
-    branches-ignore: []          # build every branch push
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
