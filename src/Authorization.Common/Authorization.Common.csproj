@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <PackageId>Authorization.Common</PackageId>
-    <Description>Shared helpers for the JWT authorization middleware, including a cached reflection-based object mapper.</Description>
-  </PropertyGroup>
-
-</Project>
