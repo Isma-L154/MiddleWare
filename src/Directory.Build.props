@@ -16,9 +16,9 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
-  <!-- Common NuGet metadata (v2.0.0 = breaking English API rename). -->
+  <!-- Common NuGet metadata. Releases are published by pushing a matching vX.Y.Z tag. -->
   <PropertyGroup>
-    <Version>2.0.0</Version>
+    <Version>3.0.0</Version>
     <Authors>Isma-L154</Authors>
     <Company>Isma-L154</Company>
     <Product>JWT Authorization Middleware</Product>

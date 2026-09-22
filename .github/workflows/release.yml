@@ -1,9 +1,10 @@
 name: Release
 
+# Publishing is explicit: push a tag matching the <Version> in
+# src/Directory.Build.props (e.g. v3.0.0) after the bump is merged to main.
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    tags: [ "v[0-9]+.[0-9]+.[0-9]+*" ]
 
 # Use the built-in GITHUB_TOKEN to publish to GitHub Packages —
 # no personal access token to manage or rotate.
@@ -12,12 +13,15 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-main
+  group: release
   cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      # Keeps the first-run banner out of the version captured below.
+      DOTNET_NOLOGO: true
 
     steps:
       - name: Checkout
@@ -27,6 +31,15 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      - name: Check tag matches project version
+        run: |
+          project_version=$(dotnet msbuild src/Authorization.Abstractions -getProperty:Version)
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$project_version" != "$tag_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match project version $project_version"
+            exit 1
+          fi
 
       - name: Restore
         run: dotnet restore Authorization.sln
@@ -48,9 +61,11 @@ jobs:
           retention-days: 7
           path: ${{ github.workspace }}/artifacts/*.nupkg
 
+      # No --skip-duplicate: republishing an existing version must fail loudly.
+      # GitHub Packages does not accept .snupkg symbol packages.
       - name: Push to GitHub Packages
         run: >
           dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg"
           --api-key ${{ secrets.GITHUB_TOKEN }}
           --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          --skip-duplicate
+          --no-symbols
